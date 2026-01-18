@@ -89,9 +89,17 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Simple health check
+// Simple health check and root route
+app.get("/", (_req, res) => {
+  res.status(200).send("🚀 CollabUp Node.js API is running! Use /health for status.");
+});
+
 app.get("/health", (_req, res) => {
-  res.status(200).json({ ok: true });
+  res.status(200).json({ 
+    status: "online", 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Middleware to verify Firebase Auth ID token
@@ -570,7 +578,13 @@ app.get("/api/mentor/stats/:uid", async (req, res) => {
   }
 });
 
-console.log("Loaded [server.js](http://_vscodecontentref_/0) and registered role-specific APIs");
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+console.log("-----------------------------------------");
+console.log("🚀 Starting CollabUp Node.js Server...");
+console.log(`📡 PORT: ${PORT}`);
+console.log(`🔒 CORS Allowed Origins: ${cleanedAllowedOrigins.join(', ')}`);
+console.log("-----------------------------------------");
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server is officially listening on port ${PORT}`);
+  console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
 });

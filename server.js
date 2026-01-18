@@ -9,14 +9,23 @@ dotenv.config();
 const PORT = process.env.PORT || 5050;
 const app = express();
 
-// Initialize Firebase Admin using default credentials (Cloud Run) or service account (local)
+// Initialize Firebase Admin
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log("✅ Firebase Admin initialized via FIREBASE_SERVICE_ACCOUNT env var");
+    } else {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+      });
+      console.log("✅ Firebase Admin initialized via applicationDefault");
+    }
   } catch (err) {
-    console.error("Failed to initialize Firebase Admin with application default credentials. Falling back to explicit credentials if available.");
+    console.error("❌ Failed to initialize Firebase Admin:", err.message);
   }
 }
 

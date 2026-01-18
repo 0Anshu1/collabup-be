@@ -66,10 +66,21 @@ app.use(cors({
     // Normalize the origin by removing trailing slash for comparison
     const normalizedOrigin = origin.trim().replace(/\/$/, "");
     
-    if (cleanedAllowedOrigins.indexOf(normalizedOrigin) !== -1) {
+    const isAllowed = cleanedAllowedOrigins.some(allowed => {
+      if (allowed.includes('.netlify.app') && normalizedOrigin.endsWith('.netlify.app')) {
+        // If the allowed origin is a netlify app, we might want to be more flexible
+        // or just match it exactly. For now, let's stick to exact or subdomain matching
+        // if the user provided a base netlify domain.
+        return normalizedOrigin === allowed || normalizedOrigin.endsWith('.' + allowed.replace('https://', ''));
+      }
+      return normalizedOrigin === allowed;
+    });
+
+    if (isAllowed) {
       return callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.log('❌ CORS blocked origin:', origin);
+      console.log('ℹ️ Allowed origins are:', cleanedAllowedOrigins);
       return callback(new Error('Not allowed by CORS'));
     }
   },

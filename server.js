@@ -37,6 +37,11 @@ const allowedOrigins = [
   'http://127.0.0.1:5173'
 ];
 
+// Add custom origin from environment variable if provided
+if (process.env.ALLOWED_ORIGIN) {
+  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
+}
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)

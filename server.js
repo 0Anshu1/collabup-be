@@ -46,16 +46,27 @@ const allowedOrigins = [
   'http://127.0.0.1:5173'
 ];
 
-// Add custom origin from environment variable if provided
+// Add custom origins from environment variables if provided
 if (process.env.ALLOWED_ORIGIN) {
-  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
+  allowedOrigins.push(process.env.ALLOWED_ORIGIN.trim().replace(/\/$/, ""));
 }
+if (process.env.ALLOWED_ORIGINS) {
+  const origins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/\/$/, ""));
+  allowedOrigins.push(...origins);
+}
+
+// Clean up existing allowedOrigins to remove trailing slashes for safety
+const cleanedAllowedOrigins = allowedOrigins.map(o => o.trim().replace(/\/$/, ""));
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    
+    // Normalize the origin by removing trailing slash for comparison
+    const normalizedOrigin = origin.trim().replace(/\/$/, "");
+    
+    if (cleanedAllowedOrigins.indexOf(normalizedOrigin) !== -1) {
       return callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);

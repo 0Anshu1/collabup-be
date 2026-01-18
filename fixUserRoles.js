@@ -35,7 +35,7 @@ async function fixAllUserRoles() {
     await ensureUserDoc(doc.id, doc.data(), 'student');
   }
   // Mentors
-  const mentors = await db.collection('mentor').get();
+  const mentors = await db.collection('mentors').get();
   for (const doc of mentors.docs) {
     await ensureUserDoc(doc.id, doc.data(), 'mentor');
   }
@@ -48,7 +48,7 @@ async function fixAllUserRoles() {
 
 async function fixProjectAndHackathonOwners() {
   // Projects
-  const projects = await db.collection('project').get();
+  const projects = await db.collection('projects').get();
   for (const doc of projects.docs) {
     const data = doc.data();
     // Ensure ownerId/mentorId/facultyId fields are valid

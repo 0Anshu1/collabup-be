@@ -43,9 +43,9 @@ try:
     
     # Test the connection
     try:
-        test_collection = db.collection('projects').limit(1).stream()
+        test_collection = db.collection('studentProjects').limit(1).stream()
         test_count = len(list(test_collection))
-        print(f"✅ Firebase connection test successful. Found {test_count} documents in projects collection")
+        print(f"✅ Firebase connection test successful. Found {test_count} documents in studentProjects collection")
     except Exception as e:
         print(f"❌ Firebase connection test failed: {e}")
         db = None
@@ -158,51 +158,52 @@ def calculate_similarity_score(categorized_tokens: Dict[str, List[str]], item_da
         # Student projects fields
         title = item_data.get('title', '')
         description = item_data.get('description', '')
-        skills_required = item_data.get('skillsRequired', [])
+        skills = item_data.get('skills', item_data.get('technologies', []))
         domain = item_data.get('domain', '')
-        difficulty = item_data.get('difficulty', '')
-        type_project = item_data.get('type', '')
+        level = item_data.get('level', '')
         
         all_text_fields = [
             ('title', title, 3.0),
             ('description', description, 1.5),
             ('domain', domain, 2.5),
-            ('difficulty', difficulty, 1.0),
-            ('type', type_project, 1.0)
+            ('level', level, 1.0)
         ]
         
         # Handle skills array
-        for skill in skills_required:
+        for skill in skills:
             all_text_fields.append(('skill', skill, 2.0))
             
     elif item_type == "startup_projects":
         # Startup fields
-        name = item_data.get('name', '')
+        title = item_data.get('title', '')
+        startup_name = item_data.get('startupName', item_data.get('company', ''))
         description = item_data.get('description', '')
         domain = item_data.get('domain', '')
         location = item_data.get('location', '')
-        mission = item_data.get('mission', '')
-        founder = item_data.get('founder', '')
-        funding = item_data.get('funding', '')
+        founder = item_data.get('founderName', '')
+        skills = item_data.get('skills', [])
         
         all_text_fields = [
-            ('name', name, 3.0),
+            ('title', title, 3.0),
+            ('startupName', startup_name, 2.0),
             ('description', description, 1.5),
             ('domain', domain, 2.5),
             ('location', location, 1.5),
-            ('mission', mission, 2.0),
-            ('founder', founder, 1.0),
-            ('funding', funding, 0.5)
+            ('founder', founder, 1.0)
         ]
+
+        # Handle skills array
+        for skill in skills:
+            all_text_fields.append(('skill', skill, 2.0))
         
     elif item_type == "mentor_profiles":
         # Mentor fields
-        name = item_data.get('name', '')
-        expertise = item_data.get('expertise', [])
+        name = item_data.get('name', item_data.get('fullName', ''))
+        expertise = item_data.get('expertise', item_data.get('expertiseAreas', []))
         bio = item_data.get('bio', '')
         current_company = item_data.get('currentCompany', '')
         designation = item_data.get('designation', '')
-        experience = str(item_data.get('experience', ''))
+        experience = str(item_data.get('experience', item_data.get('yearsOfExperience', '')))
         
         all_text_fields = [
             ('name', name, 2.0),
@@ -217,27 +218,29 @@ def calculate_similarity_score(categorized_tokens: Dict[str, List[str]], item_da
             all_text_fields.append(('expertise', exp, 3.0))
             
     elif item_type == "research_projects":
-        # Faculty/Research fields
-        name = item_data.get('name', '')
-        research_areas = item_data.get('researchAreas', [])
-        bio = item_data.get('bio', '')
-        department = item_data.get('department', '')
-        institute = item_data.get('institute', '')
-        designation = item_data.get('designation', '')
-        experience = str(item_data.get('experience', ''))
+        # Research project fields
+        title = item_data.get('title', '')
+        description = item_data.get('description', '')
+        domain = item_data.get('domain', '')
+        skills = item_data.get('skills', [])
+        location = item_data.get('location', '')
+        level = item_data.get('level', '')
+        faculty_name = item_data.get('facultyName', '')
+        institute_name = item_data.get('instituteName', '')
         
         all_text_fields = [
-            ('name', name, 2.0),
-            ('bio', bio, 1.5),
-            ('department', department, 2.0),
-            ('institute', institute, 1.5),
-            ('designation', designation, 1.5),
-            ('experience', experience, 1.0)
+            ('title', title, 3.0),
+            ('description', description, 1.5),
+            ('domain', domain, 2.5),
+            ('location', location, 1.0),
+            ('level', level, 1.0),
+            ('facultyName', faculty_name, 2.0),
+            ('instituteName', institute_name, 2.0)
         ]
         
-        # Handle research areas array
-        for area in research_areas:
-            all_text_fields.append(('researchArea', area, 3.0))
+        # Handle skills array
+        for skill in skills:
+            all_text_fields.append(('skill', skill, 2.0))
     
     # Calculate scores for each category of tokens
     for category, tokens in categorized_tokens.items():
@@ -306,10 +309,10 @@ async def get_recommendations_from_firebase(query: str, top_n: int = 5) -> Recom
     
     try:
         # Fetch data from correct collections
-        projects_ref = db.collection('projects')
-        startups_ref = db.collection('startups')
-        mentors_ref = db.collection('mentors')
-        faculty_ref = db.collection('faculty')
+        projects_ref = db.collection('studentProjects')
+        startups_ref = db.collection('startupProjects')
+        mentors_ref = db.collection('users').where('role', '==', 'mentor')
+        research_ref = db.collection('researchProjects')
         
         print("📊 Fetching data from collections...")
         
@@ -317,7 +320,7 @@ async def get_recommendations_from_firebase(query: str, top_n: int = 5) -> Recom
         projects_docs = projects_ref.stream()
         startups_docs = startups_ref.stream()
         mentors_docs = mentors_ref.stream()
-        faculty_docs = faculty_ref.stream()
+        research_docs = research_ref.stream()
         
         # Convert to dictionaries and calculate scores
         student_projects = []
@@ -336,7 +339,7 @@ async def get_recommendations_from_firebase(query: str, top_n: int = 5) -> Recom
                 student_projects.append(data)
         print(f"   Found {len(student_projects)} matching student projects")
         
-        # Process startups (startup projects)
+        # Process startupProjects (startup projects)
         print("🔍 Processing startup projects...")
         for doc in startups_docs:
             data = doc.to_dict()
@@ -347,7 +350,7 @@ async def get_recommendations_from_firebase(query: str, top_n: int = 5) -> Recom
                 startup_projects.append(data)
         print(f"   Found {len(startup_projects)} matching startup projects")
         
-        # Process mentors (mentor profiles)
+        # Process mentors (mentor profiles from users collection)
         print("🔍 Processing mentor profiles...")
         for doc in mentors_docs:
             data = doc.to_dict()
@@ -358,9 +361,9 @@ async def get_recommendations_from_firebase(query: str, top_n: int = 5) -> Recom
                 mentor_profiles.append(data)
         print(f"   Found {len(mentor_profiles)} matching mentor profiles")
         
-        # Process faculty (research projects)
+        # Process researchProjects
         print("🔍 Processing research projects...")
-        for doc in faculty_docs:
+        for doc in research_docs:
             data = doc.to_dict()
             data['id'] = doc.id
             score = calculate_similarity_score(categorized_tokens, data, "research_projects")
@@ -433,7 +436,7 @@ async def health_check():
         else:
             # Test Firebase connection by checking collections
             try:
-                collections = ['projects', 'startups', 'mentors', 'faculty']
+                collections = ['studentProjects', 'startupProjects', 'users', 'researchProjects']
                 for collection_name in collections:
                     try:
                         docs = list(db.collection(collection_name).limit(1).stream())
@@ -481,7 +484,7 @@ async def debug_query(query: str = Query(..., description="Search query to debug
         sample_data = {}
         
         # Get one sample from each collection
-        collections = ['projects', 'startups', 'mentors', 'faculty']
+        collections = ['studentProjects', 'startupProjects', 'users', 'researchProjects']
         for collection_name in collections:
             try:
                 docs = list(db.collection(collection_name).limit(1).stream())
@@ -497,19 +500,19 @@ async def debug_query(query: str = Query(..., description="Search query to debug
         sample_scores = {}
         for collection_name, data in sample_data.items():
             try:
-                if collection_name == 'projects':
+                if collection_name == 'studentProjects':
                     score = calculate_similarity_score(categorized_tokens, data, "student_projects")
                     sample_scores['student_projects'] = score
-                elif collection_name == 'startups':
+                elif collection_name == 'startupProjects':
                     score = calculate_similarity_score(categorized_tokens, data, "startup_projects")
                     sample_scores['startup_projects'] = score
-                elif collection_name == 'mentors':
-                    score = calculate_similarity_score(categorized_tokens, data, "mentor_profiles")
-                    sample_scores['mentor_profiles'] = score
-                elif collection_name == 'faculty':
+                elif collection_name == 'users':
+                    if data.get('role') == 'mentor':
+                        score = calculate_similarity_score(categorized_tokens, data, "mentor_profiles")
+                        sample_scores['mentor_profiles'] = score
+                elif collection_name == 'researchProjects':
                     score = calculate_similarity_score(categorized_tokens, data, "research_projects")
                     sample_scores['research_projects'] = score
-                print(f"📊 Score for {collection_name}: {sample_scores.get(list(sample_scores.keys())[-1] if sample_scores else 'unknown')}")
             except Exception as e:
                 print(f"❌ Error calculating score for {collection_name}: {e}")
                 sample_scores[collection_name] = 0.0
@@ -537,7 +540,7 @@ async def get_collections_info():
         raise HTTPException(status_code=500, detail="Firebase not initialized")
     
     try:
-        collections = ['projects', 'startups', 'mentors', 'faculty']
+        collections = ['studentProjects', 'startupProjects', 'users', 'researchProjects']
         info = {}
         
         for collection_name in collections:
@@ -555,10 +558,10 @@ async def get_collections_info():
 def get_collection_description(collection_name: str) -> str:
     """Get description for each collection"""
     descriptions = {
-        "projects": "Student-created projects looking for collaborators",
-        "startups": "Startup projects and opportunities",
-        "mentors": "Professional mentors available for guidance",
-        "faculty": "Academic faculty and research projects"
+        "studentProjects": "Student-created projects looking for collaborators",
+        "startupProjects": "Startup projects and opportunities",
+        "users": "User profiles (including mentors)",
+        "researchProjects": "Academic faculty and research projects"
     }
     return descriptions.get(collection_name, "Unknown collection")
 

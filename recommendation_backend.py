@@ -27,9 +27,19 @@ app.add_middleware(
 # Initialize Firebase Admin SDK
 try:
     print("🔧 Initializing Firebase Admin SDK...")
-    cred = credentials.Certificate("serviceAccountKey.json")
-    print("✅ Service account key loaded successfully")
     
+    # Check if we should use service account JSON or environment variables
+    if os.path.exists("serviceAccountKey.json"):
+        print("✅ serviceAccountKey.json found, using file-based credentials")
+        cred = credentials.Certificate("serviceAccountKey.json")
+    elif os.environ.get("FIREBASE_SERVICE_ACCOUNT"):
+        print("✅ FIREBASE_SERVICE_ACCOUNT environment variable found, using JSON string")
+        service_account_info = json.loads(os.environ.get("FIREBASE_SERVICE_ACCOUNT"))
+        cred = credentials.Certificate(service_account_info)
+    else:
+        print("⚠️ No Firebase credentials found. Falling back to application default.")
+        cred = credentials.ApplicationDefault()
+
     # Check if Firebase app is already initialized
     try:
         firebase_admin.get_app()
@@ -567,4 +577,5 @@ def get_collection_description(collection_name: str) -> str:
 
 # For local development
 if __name__ == "__main__":
-    uvicorn.run("recommendation_backend:app", host="0.0.0.0", port=8000, reload=True) 
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("recommendation_backend:app", host="0.0.0.0", port=port, reload=True) 

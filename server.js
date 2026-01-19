@@ -81,7 +81,8 @@ app.use(cors({
     } else {
       console.log('❌ CORS blocked origin:', origin);
       console.log('ℹ️ Allowed origins are:', cleanedAllowedOrigins);
-      return callback(new Error('Not allowed by CORS'));
+      // Pass null, false to disallow the origin without throwing a 500 error
+      return callback(null, false);
     }
   },
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -576,6 +577,16 @@ app.get("/api/mentor/stats/:uid", async (req, res) => {
     console.error("Fetch mentor stats error:", err);
     return res.status(500).json({ error: "Failed to fetch mentor stats" });
   }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("🔥 Unhandled Error:", err);
+  res.status(500).json({ 
+    error: "Internal Server Error", 
+    message: err.message,
+    path: req.path
+  });
 });
 
 console.log("-----------------------------------------");
